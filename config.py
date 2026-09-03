@@ -10,7 +10,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
 ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "123456789").split(",") if x.strip().isdigit()]
 
 # Database
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///rider_bot.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgres:///rider_bot.db")
 
 # ====================== BUSINESS RULES ======================
 # Normal order search radius (km)
