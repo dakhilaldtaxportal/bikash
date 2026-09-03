@@ -1,5 +1,6 @@
 import logging
 import threading
+import asyncio  # <-- ১. asyncio ইম্পোর্ট করা হয়েছে
 from datetime import datetime, timezone
 
 from flask import Flask
@@ -84,6 +85,13 @@ async def check_live_locations(context: ContextTypes.DEFAULT_TYPE):
 
 # ====================== MAIN ======================
 def main():
+    # ২. asyncio Event Loop ম্যানুয়ালি সেটআপ করা হলো (RuntimeError সমাধানের জন্য)
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
     # Init DB
     init_db()
     logger.info("Database initialized")
@@ -225,7 +233,7 @@ def main():
         app.job_queue.run_repeating(check_live_locations, interval=60, first=10)
 
     # Start Flask keep-alive in background thread
-    if config.KEEP_ALIVE:
+    if getattr(config, 'KEEP_ALIVE', True):
         t = threading.Thread(target=run_flask, daemon=True)
         t.start()
         logger.info(f"Keep-alive Flask started on port {config.PORT}")
