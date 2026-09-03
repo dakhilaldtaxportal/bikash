@@ -7,7 +7,7 @@ from sqlalchemy import (
     DateTime, Text, ForeignKey, Enum as SAEnum
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import StaticPool, NullPool
 import config
 
 Base = declarative_base()
@@ -27,7 +27,8 @@ class OrderStatus(str, enum.Enum):
 class Rider(Base):
     __tablename__ = "riders"
 
-    id = Column(Integer, primary_primary=False, primary_key=True)
+    # primary_primary=False টি ভুল ছিল, তা সরিয়ে শুধু primary_key=True রাখা হয়েছে
+    id = Column(Integer, primary_key=True)
     telegram_id = Column(BigInteger, unique=True, nullable=False, index=True)
     phone = Column(String(30), nullable=True)
     name = Column(String(120), nullable=True)
@@ -73,7 +74,6 @@ class Order(Base):
     customer_lat = Column(Float, nullable=True)
     customer_lon = Column(Float, nullable=True)
 
-    # SAEnum-এ native_enum=False ব্যবহারের মাধ্যমে PostgreSQL-এর টাইপ কনফ্লিক্ট সমাধান করা হয়েছে
     order_type = Column(SAEnum(OrderType, native_enum=False), default=OrderType.NORMAL)
     status = Column(SAEnum(OrderStatus, native_enum=False), default=OrderStatus.PENDING)
 
@@ -101,12 +101,10 @@ class Setting(Base):
 def get_engine():
     db_url = getattr(config, 'DATABASE_URL', 'sqlite:///./bot.db')
     
-    # Render-এর postgres:// লিঙ্ককে postgresql://-এ কনভার্ট করা
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
 
     if db_url.startswith("sqlite"):
-        # সাধারণ SQLite ফাইলের ক্ষেত্রে StaticPool তুলে দেয়া হয়েছে
         if ":memory:" in db_url:
             engine = create_engine(
                 db_url,
@@ -115,13 +113,14 @@ def get_engine():
                 echo=False
             )
         else:
+            # Render-এ SQLite ব্যবহার করলে NullPool ফাইল সিস্টেম লকিং এরর প্রতিরোধ করে
             engine = create_engine(
                 db_url,
                 connect_args={"check_same_thread": False},
+                poolclass=NullPool,
                 echo=False
             )
     else:
-        # PostgreSQL বা অন্যান্য ডাটাবেজের জন্য
         engine = create_engine(db_url, echo=False, pool_pre_ping=True)
     return engine
 
